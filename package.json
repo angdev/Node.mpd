@@ -1,0 +1,26 @@
+{
+  "name": "Node.mpd",
+  "version": "0.0.0",
+  "description": "MPD Web Client",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FeGs/Node.mpd.git"
+  },
+  "keywords": [
+    "mpd",
+    "node.js"
+  ],
+  "author": "Chulju, Hong",
+  "license": "MIT",
+  "readmeFilename": "README.md",
+  "gitHead": "14223cf0a5f5d44672b3b8b3e85fc62839d09368",
+  "dependencies": {
+    "jade": "~0.27.7",
+    "socket.io": "~0.9.13",
+    "express": "~3.0.6"
+  }
+}
