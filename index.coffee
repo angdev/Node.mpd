@@ -2,11 +2,16 @@ net = require 'net'
 express = require 'express'
 
 app = express()
+
+server = require('http').createServer app
+sockio = require('socket.io').listen server
+
+app.set 'view engine', 'jade'
+
 connection = net.createConnection {port: 6600}
 connection.setEncoding 'utf-8'
 
 mpd_state = ''
-data_reached = false
 
 connection.on 'connect', ->
         console.log 'Connected'
@@ -14,14 +19,12 @@ connection.on 'connect', ->
 connection.on 'data', (data)->
         console.log data
         mpd_state = data
-        data_reached = true
+
+sockio.sockets.on 'connection', (socket) ->
+        console.log 'socket.io connected'
 
 app.get '/', (req, res) ->
-        connection.write 'currentsong\n'
-        0 while data_reached is false
-        res.setHeader 'Content-Type', 'text/plain'
-        res.setHeader 'Content-Length', mpd_state.length
-        res.end mpd_state
-        data_reached = false
+        res.render 'index'
 
-app.listen 3000
+
+server.listen 3000
