@@ -5,21 +5,28 @@ mpd.Init()
 
 sock = undefined
 
-OnTest = (data) ->
-	console.log 'test'
+class SocketHandler
+	constructor: ->
+		console.log 'New Socket Init'
+	Init: (sock) =>
+		@socket = sock
+		@socket.on 'test', @OnTest
+		@socket.on 'currentsong', @OnCurrentSong
+		@socket.on 'status', @OnStatus
 
-OnCurrentSong = (data) ->
-	mpd.GetCurrentSong(sock)
+	OnTest: (data) ->
+		console.log 'test'
 
-OnStatus = (data) ->
-	mpd.GetStatus(sock)
+	OnCurrentSong: (data) =>
+		mpd.GetCurrentSong(@socket)
+
+	OnStatus: (data) =>
+		mpd.GetStatus(@socket)
 
 #register here
 OnConnection = (socket) -> 
-	sock = socket
-	socket.on 'test', OnTest
-	socket.on 'currentsong', OnCurrentSong
-	socket.on 'status', OnStatus
+	sockHnd = new SocketHandler()
+	sockHnd.Init(socket)
 
 socket_init = (sockets) -> 
 	sockets.on 'connection', OnConnection

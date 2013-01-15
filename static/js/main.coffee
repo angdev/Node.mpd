@@ -9,8 +9,6 @@ init = =>
 update = =>
 	elapsed_percent = @elapsed_time / @total_time * 100
 	@elapsed_time = @elapsed_time + 1
-	if @total_time < @elapsed_time
-		init()
 	$('#elapsed-time').css('width', elapsed_percent + '%')
 	$('#total-time').css('width', (100 - elapsed_percent) + '%')
 
@@ -42,3 +40,4 @@ $('document').ready =>
 
 	init()
 	setInterval update, 1000
+	setInterval init, 3000

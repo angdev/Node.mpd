@@ -18,9 +18,6 @@
     var elapsed_percent;
     elapsed_percent = _this.elapsed_time / _this.total_time * 100;
     _this.elapsed_time = _this.elapsed_time + 1;
-    if (_this.total_time < _this.elapsed_time) {
-      init();
-    }
     $('#elapsed-time').css('width', elapsed_percent + '%');
     return $('#total-time').css('width', (100 - elapsed_percent) + '%');
   };
@@ -63,7 +60,8 @@
     _this.socket.on('currentsong', on_current_song);
     _this.socket.on('status', on_status);
     init();
-    return setInterval(update, 1000);
+    setInterval(update, 1000);
+    return setInterval(init, 3000);
   });
 
 }).call(this);
