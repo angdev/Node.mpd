@@ -22,31 +22,31 @@ class MPD
 	    console.log 'Start process func'
 	    setInterval @process, 20
 
-	GetCurrentSong: (socket) =>
-		listenFunc = (data) => 
-			@getCurrentSocket().emit 'currentsong', data
+		
+	GetPlaylistInfo: (socket, param) =>
+		@cmd = 'playlistinfo'
+		if param.start != undefined
+			@cmd += (' ' + param.start + ':' + param.end + '\n');
+		else
+			@cmd += '\n'
+		
+		listenFunc = (data) =>
+			@getCurrentSocket().emit 'playlistinfo', data
 		requestFunc = =>
-			@connection.write 'currentsong\n'
-		handler = {}
-		handler.listenFunc = @onFuncDecorator listenFunc
-		handler.requestFunc = requestFunc
-		handler.socket = socket
-		@pushHandler handler
+			@connection.write @cmd
+		@pushHandler @createHandler(listenFunc, requestFunc, socket)
 
-	GetStatus: (socket) =>
-		listenFunc = (data) => 
-			@getCurrentSocket().emit 'status', data
-		requestFunc = =>
-			@connection.write 'status\n'
-		handler = {}
-		handler.listenFunc = @onFuncDecorator listenFunc
-		handler.requestFunc = requestFunc
-		handler.socket = socket
-		@pushHandler handler
-
+	
 
 	#private funcion
 	#handler -> (listenFunc, requestFunc)
+	createHandler: (listenFunc, requestFunc, socket) =>
+		handler = {}
+		handler.listenFunc = @onFuncDecorator listenFunc
+		handler.requestFunc = @requestFuncDecorator requestFunc
+		handler.socket = socket
+		handler
+
 	pushHandler: (handler) =>
 		console.log handler.requestFunc.toString() + ' + 1 pushed'
 		@request_queue.push handler
@@ -60,7 +60,7 @@ class MPD
 			return
 
 		handler = @getCurrentHandler()
-		@requestFuncDecorator(handler.requestFunc)()
+		handler.requestFunc()
 
 	#process work in work queue
 	process: =>

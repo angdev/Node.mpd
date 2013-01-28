@@ -15,19 +15,34 @@
 		</div>
 		<span class="status">Status: Dev</span>
 	</div>
+  <div id="main_container">
+        <table class="striped hovered" id="song_list">
+        <thead>
+                <th>Title</th>
+                <th>Artist</th>
+                <th>Album</th>
+        </thead>
+        <tbody>
+                <tr>
+                <td>Test Title </td>
+                <td>Various Artist</td>
+                <td>Unknown Album</td>
+                </tr>
+        </tbody>
+        </table>
+  </div>
 	<div class="app-bar padding10">
 		<div id="current-song">
 			<span id="artist"></span>
 			<span> - </span>
 			<span id="title"></span>
-			<div class="progress-bar">
-				<div class="bar bg-color-blue" id="elapsed-time"></div>
-				<div class="bar bg-color-yellow" id="total-time"></div>
+			<div class="slider" id="playbar" data-role="slider">
 			</div>
 		</div>
 	</div>
 </body>
 <script src="/static/js/jquery-1.8.3.min.js"></script>
 <script src="/socket.io/socket.io.js"></script>
+<script src="/static/js/metro-ui/slider.js"></script>
 <script src="/static/js/main.js"></script>
 </html>

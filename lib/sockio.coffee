@@ -10,18 +10,11 @@ class SocketHandler
 		console.log 'New Socket Init'
 	Init: (sock) =>
 		@socket = sock
-		@socket.on 'test', @OnTest
-		@socket.on 'currentsong', @OnCurrentSong
-		@socket.on 'status', @OnStatus
+		@socket.on 'mpd', @_onMpd
 
-	OnTest: (data) ->
-		console.log 'test'
-
-	OnCurrentSong: (data) =>
-		mpd.GetCurrentSong(@socket)
-
-	OnStatus: (data) =>
-		mpd.GetStatus(@socket)
+	_onMpd: (data) =>
+		console.log data
+		@socket.emit 'mpd', data
 
 #register here
 OnConnection = (socket) -> 
