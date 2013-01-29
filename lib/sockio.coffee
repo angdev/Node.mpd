@@ -3,8 +3,6 @@ mpd_module = require './mpd'
 mpd = new mpd_module.MPD()
 mpd.Init()
 
-sock = undefined
-
 class SocketHandler
 	constructor: ->
 		console.log 'New Socket Init'
