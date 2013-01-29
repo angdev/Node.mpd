@@ -44,7 +44,10 @@ class MessageQueue
 	_onMessage: (data) =>
 		console.log 'onMsg'
 		handler = @_frontRequest()
-		@type_callback_dict[handler.req.type](data)
+		ret_arr = {}
+		ret_arr['data'] = data;
+		ret_arr['callback'] = handler.req.callback
+		@type_callback_dict[handler.req.type](ret_arr)
 		handler.is_processed = true;
 	
 	_process: =>
@@ -70,23 +73,9 @@ class MpdService
 	constructor: (msg_queue) ->
 		console.log 'Mpd Service start'
 		msg_queue.RegisterListener "mpd", @_onMpd
-		@cmd_callback_dict = {}
-	
-	Init: =>
-		@_registerCmdCallback('currentsong', @_onCurrentSong)
-			
-	
-	_registerCmdCallback: (cmd, callback) =>
-		@cmd_callback_dict[cmd] = callback
 		
-	_onMpd: (data) =>
-		if @cmd_callback_dict[data.cmd] == undefined
-			return
-		@cmd_callback_dict[data.cmd](data.data)
-		#console.log data
-		
-	_onCurrentSong: (data) =>
-		console.log data
+	_onMpd: (ret_arr) =>
+		ret_arr.callback(ret_arr.data)
 		
 	_parseMpdData: (data) =>
 		splited = data.split '\n'
@@ -105,15 +94,15 @@ class TestModule
 		console.log 'TestModule Start'
 		@queue = msg_queue
 	
-	__mpdTest: (_cmd, _data, _param) =>
+	__mpdTest: (_cmd, _data, _callback) =>
 		req = {}
 		req['type'] = "mpd"
-		req['data'] = { cmd: _cmd, data: _data, param: _param }
+		req['data'] = { cmd: _cmd, data: _data }
+		req['callback'] = _callback
 		@queue.PushRequest req
 
 @msg_queue = new MessageQueue()
 @mpd = new MpdService(@msg_queue)
-@mpd.Init()
 @test = new TestModule(@msg_queue)
 
 
