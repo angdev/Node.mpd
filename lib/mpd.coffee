@@ -60,7 +60,7 @@ class MPD
 				state.is_processing = true
 				state.is_receiving = true
 			else if state.is_received
-				console.log state.buffer.toString()
+				#console.log state.buffer.toString()
 				state.socket.emit 'mpd', {cmd: state.cmd, data: state.buffer.toString()}
 				state.is_processed = true
 		else
@@ -69,7 +69,7 @@ class MPD
 	_onData: (data) =>
 		if @_frontState() != undefined
 			@_frontState().buffer = Buffer.concat([@_frontState().buffer, new Buffer(data)])
-			console.log data.substr(-3)
+			#console.log data.substr(-3)
 			if data.substr(-3) == 'OK\n'
 				@_frontState().is_received = true
 	

@@ -67,17 +67,10 @@ class MessageQueue
 				return
 		else
 			@_popRequest()
-		
-	
-class MpdService
-	constructor: (msg_queue) ->
-		console.log 'Mpd Service start'
-		msg_queue.RegisterListener "mpd", @_onMpd
-		
-	_onMpd: (ret_arr) =>
-		ret_arr.callback(ret_arr.data)
-		
-	_parseMpdData: (data) =>
+			
+class MpdHelper
+	ParseMpdData: (data) =>
+		#console.log data
 		splited = data.split '\n'
 		parsed = {}
 		for list in splited
@@ -87,6 +80,38 @@ class MpdService
 				parsed[t[0]] = t[1].substr(1)
 		parsed
 
+	
+class MpdService
+	constructor: (msg_queue) ->
+		console.log 'Mpd Service start'
+		@queue = msg_queue
+		msg_queue.RegisterListener "mpd", @_onMpd
+		
+	_onMpd: (ret_arr) =>
+		ret_arr.callback(ret_arr.data)
+		
+	_getPlaylist: (id) =>
+		req = {}
+		req['type'] = 'mpd'
+		req['data'] = { cmd: 'playlistinfo', data: ('playlistinfo ' + id + ':' + (id+1) + '\n') }
+		req['callback'] = (data) ->
+			helper = new MpdHelper()
+			parsed = helper.ParseMpdData(data.data)
+			#console.log parsed
+			title = parsed.Title;
+			artist = parsed.Artist;
+			album = parsed.Album;
+			$("#song_list tbody").append('<tr><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>')
+		@queue.PushRequest req
+		
+	_logPlaylist: =>
+		req = {}
+		req['type'] = 'mpd'
+		req['data'] = { cmd: 'playlistinfo', data: 'playlistinfo 220:221\n' }
+		req['callback'] = (data) ->
+			#console.log data.data
+		@queue.PushRequest req
+		
 #end_dev
 
 class TestModule
@@ -112,4 +137,6 @@ init = =>
 	
 		
 $('document').ready => 
+	for i in [0...50]
+		mpd._getPlaylist(i)
 
