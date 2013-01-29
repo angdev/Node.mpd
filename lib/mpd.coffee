@@ -1,5 +1,15 @@
 net = require 'net'
 
+class SocketState
+	constructor: (socket, req) ->
+		@socket = socket
+		@req = req
+		@buffer = new Buffer(0)
+		@is_processing = false
+		@is_processed = false
+		@is_receiving = false
+		@is_received = false
+
 class MPD
 	constructor: ->
 		console.log 'MPD Constructed'
@@ -10,96 +20,58 @@ class MPD
 		@connection.setEncoding 'utf-8'
 		@connection.on 'connect', ->
 	    	console.log 'Connected'
-	    @connection.on 'data', (data) =>
-	    	handler = @getCurrentHandler()
-	    	if handler != undefined
-	    		handler.listenFunc(data)
+	    @connection.on 'data', @_onData
 
 	    console.log 'MPD Init'
 	    console.log 'queue init'
-	    @request_queue = []
-	    @is_data_received = true
+	    @state_queue = []
 	    console.log 'Start process func'
-	    setInterval @process, 20
+	    setInterval @_process, 20
 	    
 	OnMpd: (socket, data) =>
-		@_cmd = data.cmd
-		@_param = data.param
-		console.log @_cmd
+		console.log data.cmd
 		#일단은 가공없이 cmd만 보낸다 (cmd 가공은 왠만하면 클라에서 하는걸로)
-		listenFunc = (_data) =>
-			console.log _data
-			@getCurrentSocket().emit 'mpd', _data
-		requestFunc = =>
-			@connection.write @_cmd
-		@pushHandler @createHandler(listenFunc, requestFunc, socket)
+		state = new SocketState(socket, data.cmd)
+		@_pushState state
 
+#dev
+	#state에는 socket, req만 넣을 것
+	_pushState: (state) =>
+		if state == null
+			return
+		if state.socket == undefined || state.req == undefined
+			return
+		@state_queue.push state
 		
-	GetPlaylistInfo: (socket, param) =>
-		@cmd = 'playlistinfo'
-		if param.start != undefined
-			@cmd += (' ' + param.start + ':' + param.end + '\n');
-		else
-			@cmd += '\n'
-		
-		listenFunc = (data) =>
-			@getCurrentSocket().emit 'playlistinfo', data
-		requestFunc = =>
-			@connection.write @cmd
-		@pushHandler @createHandler(listenFunc, requestFunc, socket)
-
+	_popState: =>
+		@state_queue.shift()
 	
-
-	#private funcion
-	#handler -> (listenFunc, requestFunc)
-	createHandler: (listenFunc, requestFunc, socket) =>
-		handler = {}
-		handler.listenFunc = @onFuncDecorator listenFunc
-		handler.requestFunc = @requestFuncDecorator requestFunc
-		handler.socket = socket
-		handler
-
-	pushHandler: (handler) =>
-		console.log handler.requestFunc.toString() + ' + 1 pushed'
-		@request_queue.push handler
-
-	popHandler: =>
-		console.log 'popped'
-		@request_queue.shift()
-
-	handle: =>
-		if @request_queue.length <= 0
+	_frontState: =>
+		@state_queue[0]
+	
+	_process: =>
+		if @state_queue.length <= 0
 			return
-
-		handler = @getCurrentHandler()
-		handler.requestFunc()
-
-	#process work in work queue
-	process: =>
-		if @is_data_received == true
-			@handle()
-			return
-
-	getCurrentHandler: =>
-		if @request_queue[0] != undefined
-			return @request_queue[0]
-
-	getCurrentSocket: =>
-		if @request_queue[0] != undefined and @request_queue[0].socket != undefined
-			return @request_queue[0].socket
-
-	onFuncDecorator: (func) =>
-		decoratedFunc = (data) =>
-				func(data)
-				@popHandler()
-				@is_data_received = true
-		decoratedFunc
-
-	requestFuncDecorator: (func) =>
-		decoratedFunc = (data) =>
-			@is_data_received = false
-			func(data)
-		decoratedFunc
+		
+		state = @_frontState()
+		if !state.is_processed
+			if !state.is_processing
+				@connection.write state.req
+				state.is_processing = true
+				state.is_receiving = true
+			else if state.is_received
+				state.socket.emit 'mpd', state.buffer.toString()
+				state.is_processed = true
+		else
+			@_popState()
+			
+	_onData: (data) =>
+		console.log data
+	
+	_onEnd: =>
+		console.log 'end\n'
+	
+#end_dev	
 
 
 module.exports.MPD = MPD
