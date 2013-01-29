@@ -58,7 +58,13 @@
       if (req === null) {
         return;
       }
-      if (req.type === void 0 || req.data === void 0) {
+      if (req.type === void 0) {
+        return;
+      }
+      if (req.type === 'mpd' && req.data === void 0) {
+        return;
+      }
+      if (req.type === 'func' && req.func === void 0) {
         return;
       }
       handler = {};
@@ -78,7 +84,6 @@
 
     MessageQueue.prototype._onMessage = function(data) {
       var handler, ret_arr;
-      console.log('onMsg');
       handler = this._frontRequest();
       ret_arr = {};
       ret_arr['data'] = data;
@@ -95,11 +100,15 @@
       if (this.socket === null) {
         return;
       }
-      console.log('process');
       handler = this._frontRequest();
       if (!handler.is_processed) {
         if (!handler.is_processing) {
-          this.socket_wrap.Socket().emit(handler.req.type, handler.req.data);
+          if (handler.req.type === 'mpd') {
+            this.socket_wrap.Socket().emit(handler.req.type, handler.req.data);
+          } else if (handler.req.type === 'func') {
+            handler.req.func();
+            handler.is_processed = true;
+          }
           return handler.is_processing = true;
         } else {
 
@@ -148,34 +157,110 @@
     function MpdService(msg_queue) {
       this._logPlaylist = __bind(this._logPlaylist, this);
 
-      this._getPlaylist = __bind(this._getPlaylist, this);
+      this._requestPlaylist = __bind(this._requestPlaylist, this);
+
+      this._addToTable = __bind(this._addToTable, this);
+
+      this._getStatus = __bind(this._getStatus, this);
+
+      this._update = __bind(this._update, this);
 
       this._onMpd = __bind(this._onMpd, this);
+
+      this.StartUpdate = __bind(this.StartUpdate, this);
+
+      this.Init = __bind(this.Init, this);
       console.log('Mpd Service start');
       this.queue = msg_queue;
+      this.helper = new MpdHelper();
       msg_queue.RegisterListener("mpd", this._onMpd);
     }
+
+    MpdService.prototype.Init = function() {
+      var req,
+        _this = this;
+      req = {};
+      req['type'] = 'mpd';
+      req['data'] = {
+        cmd: 'status',
+        data: 'status\n'
+      };
+      req['callback'] = function(data) {
+        var cid, i, parsed, _i, _ref, _ref1, _req;
+        parsed = _this.helper.ParseMpdData(data.data);
+        cid = parseInt(parsed.songid);
+        for (i = _i = _ref = cid - 15, _ref1 = cid + 15; _ref <= _ref1 ? _i <= _ref1 : _i >= _ref1; i = _ref <= _ref1 ? ++_i : --_i) {
+          _req = {};
+          _req['type'] = 'mpd';
+          _req['data'] = {
+            cmd: 'playlistid',
+            data: 'playlistid ' + i + '\n'
+          };
+          _req['callback'] = function(data) {
+            return _this._addToTable(data);
+          };
+          _this.queue.PushRequest(_req);
+        }
+        req = {};
+        req['type'] = 'func';
+        req['func'] = function() {
+          return $("tr[songid='" + cid + "']").css('background-color', '#abcdef');
+        };
+        return _this.queue.PushRequest(req);
+      };
+      return this.queue.PushRequest(req);
+    };
+
+    MpdService.prototype.StartUpdate = function() {
+      return setInterval(this._update, 1000);
+    };
 
     MpdService.prototype._onMpd = function(ret_arr) {
       return ret_arr.callback(ret_arr.data);
     };
 
-    MpdService.prototype._getPlaylist = function(id) {
+    MpdService.prototype._update = function() {
+      return console.log('update');
+    };
+
+    MpdService.prototype._getStatus = function(callback) {
       var req;
       req = {};
       req['type'] = 'mpd';
       req['data'] = {
-        cmd: 'playlistinfo',
-        data: 'playlistinfo ' + id + ':' + (id + 1) + '\n'
+        cmd: 'status',
+        data: 'status\n'
+      };
+      req['callback'] = callback;
+      return this.queue.PushRequest(req);
+    };
+
+    MpdService.prototype._addToTable = function(data) {
+      var album, artist, parsed, title;
+      parsed = this.helper.ParseMpdData(data.data);
+      console.log(parsed);
+      title = parsed.Title;
+      artist = parsed.Artist;
+      album = parsed.Album;
+      return $("#song_list tbody").append('<tr songid="' + parsed.Id + '"><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>');
+    };
+
+    MpdService.prototype._requestPlaylist = function(id) {
+      var req,
+        _this = this;
+      req = {};
+      req['type'] = 'mpd';
+      req['data'] = {
+        cmd: 'playlistid',
+        data: 'playlistid ' + id + '\n'
       };
       req['callback'] = function(data) {
-        var album, artist, helper, parsed, title;
-        helper = new MpdHelper();
-        parsed = helper.ParseMpdData(data.data);
+        var album, artist, parsed, title;
+        parsed = _this.helper.ParseMpdData(data.data);
         title = parsed.Title;
         artist = parsed.Artist;
         album = parsed.Album;
-        return $("#song_list tbody").append('<tr><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>');
+        return $("#song_list tbody").append('<tr songid="' + parsed.Id(+'"><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>'));
       };
       return this.queue.PushRequest(req);
     };
@@ -199,12 +284,12 @@
   TestModule = (function() {
 
     function TestModule(msg_queue) {
-      this.__mpdTest = __bind(this.__mpdTest, this);
+      this.mpd = __bind(this.mpd, this);
       console.log('TestModule Start');
       this.queue = msg_queue;
     }
 
-    TestModule.prototype.__mpdTest = function(_cmd, _data, _callback) {
+    TestModule.prototype.mpd = function(_cmd, _data, _callback) {
       var req;
       req = {};
       req['type'] = "mpd";
@@ -232,12 +317,8 @@
   };
 
   $('document').ready(function() {
-    var i, _i, _results;
-    _results = [];
-    for (i = _i = 0; _i < 50; i = ++_i) {
-      _results.push(mpd._getPlaylist(i));
-    }
-    return _results;
+    mpd.Init();
+    return mpd.StartUpdate();
   });
 
 }).call(this);

@@ -27,7 +27,11 @@ class MessageQueue
 		#check valid
 		if req == null
 			return
-		if req.type == undefined || req.data == undefined
+		if req.type == undefined
+			return
+		if req.type == 'mpd' && req.data == undefined
+			return
+		if req.type == 'func' && req.func == undefined
 			return
 		handler = {}
 		handler['req'] = req
@@ -42,7 +46,7 @@ class MessageQueue
 		@queue[0]
 	
 	_onMessage: (data) =>
-		console.log 'onMsg'
+		#console.log 'onMsg'
 		handler = @_frontRequest()
 		ret_arr = {}
 		ret_arr['data'] = data;
@@ -56,12 +60,16 @@ class MessageQueue
 		if @socket == null
 			return
 		
-		console.log 'process'
+		#console.log 'process'
 		
 		handler = @_frontRequest()
 		if !handler.is_processed
 			if !handler.is_processing
-				@socket_wrap.Socket().emit handler.req.type, handler.req.data
+				if handler.req.type == 'mpd'
+					@socket_wrap.Socket().emit handler.req.type, handler.req.data
+				else if handler.req.type == 'func'
+					handler.req.func()
+					handler.is_processed = true
 				handler.is_processing = true
 			else
 				return
@@ -85,23 +93,66 @@ class MpdService
 	constructor: (msg_queue) ->
 		console.log 'Mpd Service start'
 		@queue = msg_queue
+		@helper = new MpdHelper()
 		msg_queue.RegisterListener "mpd", @_onMpd
+		
+	Init: =>
+		req = {}
+		req['type'] = 'mpd'
+		req['data'] = { cmd: 'status', data: 'status\n' }
+		req['callback'] = (data) =>
+			parsed = @helper.ParseMpdData(data.data)
+			cid = parseInt(parsed.songid)
+			for i in [cid-15..cid+15]
+				_req = {}
+				_req['type'] = 'mpd'
+				_req['data'] = { cmd: 'playlistid', data: ('playlistid ' + i + '\n') }
+				_req['callback'] = (data) =>
+					@_addToTable(data)
+				@queue.PushRequest _req
+			req = {}
+			req['type'] = 'func'
+			req['func'] = =>
+				$("tr[songid='" + cid + "']").css('background-color', '#abcdef') 
+			@queue.PushRequest req		
+		@queue.PushRequest req
+		
+	StartUpdate: =>
+		setInterval(@_update, 1000)
 		
 	_onMpd: (ret_arr) =>
 		ret_arr.callback(ret_arr.data)
 		
-	_getPlaylist: (id) =>
+	_update: =>
+		console.log 'update'
+		
+	_getStatus: (callback) =>
 		req = {}
 		req['type'] = 'mpd'
-		req['data'] = { cmd: 'playlistinfo', data: ('playlistinfo ' + id + ':' + (id+1) + '\n') }
-		req['callback'] = (data) ->
-			helper = new MpdHelper()
-			parsed = helper.ParseMpdData(data.data)
+		req['data'] = { cmd: 'status', data: 'status\n' }
+		req['callback'] = callback
+		@queue.PushRequest req
+				
+	_addToTable: (data) =>
+		parsed = @helper.ParseMpdData(data.data)
+		console.log parsed
+		title = parsed.Title;
+		artist = parsed.Artist;
+		album = parsed.Album;
+		$("#song_list tbody").append('<tr songid="' + parsed.Id + '"><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>')
+		
+			
+	_requestPlaylist: (id) =>
+		req = {}
+		req['type'] = 'mpd'
+		req['data'] = { cmd: 'playlistid', data: ('playlistid ' + id + '\n') }
+		req['callback'] = (data) =>
+			parsed = @helper.ParseMpdData(data.data)
 			#console.log parsed
 			title = parsed.Title;
 			artist = parsed.Artist;
 			album = parsed.Album;
-			$("#song_list tbody").append('<tr><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>')
+			$("#song_list tbody").append('<tr songid="'+ parsed.Id +'"><td>' + title + '</td><td>' + artist + '</td><td>' + album + '</td></tr>')
 		@queue.PushRequest req
 		
 	_logPlaylist: =>
@@ -119,7 +170,7 @@ class TestModule
 		console.log 'TestModule Start'
 		@queue = msg_queue
 	
-	__mpdTest: (_cmd, _data, _callback) =>
+	mpd: (_cmd, _data, _callback) =>
 		req = {}
 		req['type'] = "mpd"
 		req['data'] = { cmd: _cmd, data: _data }
@@ -137,6 +188,6 @@ init = =>
 	
 		
 $('document').ready => 
-	for i in [0...50]
-		mpd._getPlaylist(i)
-
+	mpd.Init()
+	mpd.StartUpdate()
+	

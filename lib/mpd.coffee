@@ -31,6 +31,7 @@ class MPD
 	    
 	OnMpd: (socket, data) =>
 		#일단은 가공없이 cmd만 보낸다 (cmd 가공은 왠만하면 클라에서 하는걸로)
+		console.log data
 		state = new SocketState(socket, data)
 		@_pushState state
 
