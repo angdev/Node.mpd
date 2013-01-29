@@ -14,7 +14,8 @@ class SocketHandler
 
 	_onMpd: (data) =>
 		console.log data
-		@socket.emit 'mpd', data
+		#@socket.emit 'mpd', data
+		mpd.OnMpd(@socket, data)
 
 #register here
 OnConnection = (socket) -> 

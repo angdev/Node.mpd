@@ -21,6 +21,18 @@ class MPD
 	    @is_data_received = true
 	    console.log 'Start process func'
 	    setInterval @process, 20
+	    
+	OnMpd: (socket, data) =>
+		@_cmd = data.cmd
+		@_param = data.param
+		console.log @_cmd
+		#일단은 가공없이 cmd만 보낸다 (cmd 가공은 왠만하면 클라에서 하는걸로)
+		listenFunc = (_data) =>
+			console.log _data
+			@getCurrentSocket().emit 'mpd', _data
+		requestFunc = =>
+			@connection.write @_cmd
+		@pushHandler @createHandler(listenFunc, requestFunc, socket)
 
 		
 	GetPlaylistInfo: (socket, param) =>
