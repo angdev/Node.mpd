@@ -115,12 +115,34 @@
     function MpdService(msg_queue) {
       this._parseMpdData = __bind(this._parseMpdData, this);
 
+      this._onCurrentSong = __bind(this._onCurrentSong, this);
+
       this._onMpd = __bind(this._onMpd, this);
+
+      this._registerCmdCallback = __bind(this._registerCmdCallback, this);
+
+      this.Init = __bind(this.Init, this);
       console.log('Mpd Service start');
       msg_queue.RegisterListener("mpd", this._onMpd);
+      this.cmd_callback_dict = {};
     }
 
+    MpdService.prototype.Init = function() {
+      return this._registerCmdCallback('currentsong', this._onCurrentSong);
+    };
+
+    MpdService.prototype._registerCmdCallback = function(cmd, callback) {
+      return this.cmd_callback_dict[cmd] = callback;
+    };
+
     MpdService.prototype._onMpd = function(data) {
+      if (this.cmd_callback_dict[data.cmd] === void 0) {
+        return;
+      }
+      return this.cmd_callback_dict[data.cmd](data.data);
+    };
+
+    MpdService.prototype._onCurrentSong = function(data) {
       return console.log(data);
     };
 
@@ -155,12 +177,13 @@
       this.queue = msg_queue;
     }
 
-    TestModule.prototype.__mpdTest = function(_cmd, _param) {
+    TestModule.prototype.__mpdTest = function(_cmd, _data, _param) {
       var req;
       req = {};
       req['type'] = "mpd";
       req['data'] = {
         cmd: _cmd,
+        data: _data,
         param: _param
       };
       return this.queue.PushRequest(req);
@@ -173,6 +196,8 @@
   this.msg_queue = new MessageQueue();
 
   this.mpd = new MpdService(this.msg_queue);
+
+  this.mpd.Init();
 
   this.test = new TestModule(this.msg_queue);
 

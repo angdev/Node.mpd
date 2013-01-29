@@ -3,7 +3,8 @@ net = require 'net'
 class SocketState
 	constructor: (socket, req) ->
 		@socket = socket
-		@req = req
+		@cmd = req.cmd
+		@data = req.data
 		@buffer = new Buffer(0)
 		@is_processing = false
 		@is_processed = false
@@ -29,17 +30,16 @@ class MPD
 	    setInterval @_process, 20
 	    
 	OnMpd: (socket, data) =>
-		console.log data.cmd
 		#일단은 가공없이 cmd만 보낸다 (cmd 가공은 왠만하면 클라에서 하는걸로)
-		state = new SocketState(socket, data.cmd)
+		state = new SocketState(socket, data)
 		@_pushState state
 
 #dev
-	#state에는 socket, req만 넣을 것
+	#state에는 socket, cmd만 넣을 것
 	_pushState: (state) =>
 		if state == null
 			return
-		if state.socket == undefined || state.req == undefined
+		if state.socket == undefined || state.cmd == undefined
 			return
 		@state_queue.push state
 		
@@ -56,12 +56,12 @@ class MPD
 		state = @_frontState()
 		if !state.is_processed
 			if !state.is_processing
-				@connection.write state.req
+				@connection.write state.data
 				state.is_processing = true
 				state.is_receiving = true
 			else if state.is_received
-				#console.log state.buffer.toString()
-				state.socket.emit 'mpd', state.buffer.toString()
+				console.log state.buffer.toString()
+				state.socket.emit 'mpd', {cmd: state.cmd, data: state.buffer.toString()}
 				state.is_processed = true
 		else
 			@_popState()

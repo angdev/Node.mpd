@@ -70,8 +70,22 @@ class MpdService
 	constructor: (msg_queue) ->
 		console.log 'Mpd Service start'
 		msg_queue.RegisterListener "mpd", @_onMpd
+		@cmd_callback_dict = {}
+	
+	Init: =>
+		@_registerCmdCallback('currentsong', @_onCurrentSong)
+			
+	
+	_registerCmdCallback: (cmd, callback) =>
+		@cmd_callback_dict[cmd] = callback
 		
 	_onMpd: (data) =>
+		if @cmd_callback_dict[data.cmd] == undefined
+			return
+		@cmd_callback_dict[data.cmd](data.data)
+		#console.log data
+		
+	_onCurrentSong: (data) =>
 		console.log data
 		
 	_parseMpdData: (data) =>
@@ -91,14 +105,15 @@ class TestModule
 		console.log 'TestModule Start'
 		@queue = msg_queue
 	
-	__mpdTest: (_cmd, _param) =>
+	__mpdTest: (_cmd, _data, _param) =>
 		req = {}
 		req['type'] = "mpd"
-		req['data'] = { cmd: _cmd, param: _param }
+		req['data'] = { cmd: _cmd, data: _data, param: _param }
 		@queue.PushRequest req
 
 @msg_queue = new MessageQueue()
 @mpd = new MpdService(@msg_queue)
+@mpd.Init()
 @test = new TestModule(@msg_queue)
 
 
